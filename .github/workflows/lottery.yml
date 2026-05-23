@@ -1,0 +1,49 @@
+name: 연금복권 자동 구매
+
+on:
+  schedule:
+    # 매주 월요일 오전 10시 KST (= 01:00 UTC)
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+    inputs:
+      purchase_count:
+        description: "구매 수량 (기본값: 1)"
+        required: false
+        default: "1"
+
+jobs:
+  purchase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 의존성 설치
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+
+      - name: 로또 자동 구매 실행
+        env:
+          LOTTERY_ID: ${{ secrets.LOTTERY_ID }}
+          LOTTERY_PW: ${{ secrets.LOTTERY_PW }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PURCHASE_COUNT: ${{ github.event.inputs.purchase_count || vars.PURCHASE_COUNT || '1' }}
+        run: python lottery_buyer.py
+
+      - name: 에러 스크린샷 업로드 (실패 시)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshot-${{ github.run_id }}
+          path: error_screenshot.png
+          retention-days: 7

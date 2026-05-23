@@ -1,4 +1,4 @@
-name: 연금복권 자동 구매
+name: 로또 자동 구매
 
 on:
   schedule:
@@ -6,13 +6,21 @@ on:
     - cron: "0 1 * * 1"
   workflow_dispatch:
     inputs:
+      mode:
+        description: "실행 모드"
+        required: true
+        default: "test-login"
+        type: choice
+        options:
+          - test-login
+          - purchase
       purchase_count:
-        description: "구매 수량 (기본값: 1)"
+        description: "구매 수량 (purchase 모드에서만 사용)"
         required: false
         default: "1"
 
 jobs:
-  purchase:
+  run:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -31,7 +39,17 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium --with-deps
 
+      - name: 로그인 테스트
+        if: github.event.inputs.mode == 'test-login'
+        env:
+          LOTTERY_ID: ${{ secrets.LOTTERY_ID }}
+          LOTTERY_PW: ${{ secrets.LOTTERY_PW }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python test_login.py
+
       - name: 로또 자동 구매 실행
+        if: github.event.inputs.mode == 'purchase' || github.event_name == 'schedule'
         env:
           LOTTERY_ID: ${{ secrets.LOTTERY_ID }}
           LOTTERY_PW: ${{ secrets.LOTTERY_PW }}
@@ -40,10 +58,11 @@ jobs:
           PURCHASE_COUNT: ${{ github.event.inputs.purchase_count || vars.PURCHASE_COUNT || '1' }}
         run: python lottery_buyer.py
 
-      - name: 에러 스크린샷 업로드 (실패 시)
-        if: failure()
+      - name: 스크린샷 업로드 (항상)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: error-screenshot-${{ github.run_id }}
-          path: error_screenshot.png
+          name: screenshots-${{ github.run_id }}
+          path: "*.png"
           retention-days: 7
+          if-no-files-found: ignore

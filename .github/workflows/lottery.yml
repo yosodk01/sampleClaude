@@ -1,9 +1,9 @@
-name: 로또 자동 구매
+name: 로또 6/45 자동 구매
 
 on:
   schedule:
-    # 매주 월요일 오전 10시 KST (= 01:00 UTC)
-    - cron: "0 1 * * 1"
+    # 매주 토요일 오전 9시 KST (= 00:00 UTC) - 추첨 당일 오전 구매
+    - cron: "0 0 * * 6"
   workflow_dispatch:
     inputs:
       mode:

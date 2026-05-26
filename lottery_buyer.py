@@ -13,7 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 LOGIN_URL = "https://dhlottery.co.kr/user.do?method=login"
-PENSION_URL = "https://el.dhlottery.co.kr/game/pension720/game.jsp"
+LOTTO_URL = "https://ol.dhlottery.co.kr/olotto/game_mobile/game645.do"
 BALANCE_URL = "https://dhlottery.co.kr/userSsl.do?method=myPage"
 
 
@@ -82,33 +82,30 @@ class LotteryBuyer:
             return "확인 불가"
 
     def _purchase(self, page) -> list[str]:
-        logger.info(f"연금복권 720+ 구매 시작 (수량: {self.purchase_count}장)")
-        page.goto(PENSION_URL, wait_until="domcontentloaded")
+        logger.info(f"로또 6/45 구매 시작 (수량: {self.purchase_count}장)")
+        page.goto(LOTTO_URL, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
-
-        # iframe 내부 접근
-        frame = page.frame_locator("iframe#gameIframe").first
 
         tickets = []
         for i in range(self.purchase_count):
             logger.info(f"  {i + 1}번째 티켓 구매 중...")
-            ticket_numbers = self._buy_one_ticket(frame, page)
+            ticket_numbers = self._buy_one_ticket(page)
             tickets.append(ticket_numbers)
             logger.info(f"  구매 완료: {ticket_numbers}")
 
         return tickets
 
-    def _buy_one_ticket(self, frame, page) -> str:
+    def _buy_one_ticket(self, page) -> str:
         # 자동번호 선택 버튼
-        frame.locator("button.btn_auto, a.btn_auto, input[value='자동']").first.click()
+        page.locator("button.btn_auto, a.btn_auto, input[value='자동']").first.click()
         page.wait_for_timeout(1000)
 
         # 장바구니 추가
-        frame.locator("button.btn_add, a.btn_add, .btn_basket").first.click()
+        page.locator("button.btn_add, a.btn_add, .btn_basket").first.click()
         page.wait_for_timeout(1000)
 
         # 구매하기 버튼
-        frame.locator("button.btn_buy, a.btn_buy, .btn_purchase").first.click()
+        page.locator("button.btn_buy, a.btn_buy, .btn_purchase").first.click()
         page.wait_for_timeout(2000)
 
         # 구매 확인 팝업 처리
@@ -118,7 +115,7 @@ class LotteryBuyer:
 
         # 구매된 번호 추출 (결과 화면에서)
         try:
-            result = frame.locator(".num_result, .result_num, .selected_num").first.inner_text(timeout=5000)
+            result = page.locator(".num_result, .result_num, .selected_num").first.inner_text(timeout=5000)
             return result.strip()
         except Exception:
             return "번호 확인 불가"
@@ -127,7 +124,7 @@ class LotteryBuyer:
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         ticket_lines = "\n".join(f"  {i + 1}. {t}" for i, t in enumerate(tickets))
         msg = (
-            f"✅ <b>연금복권 720+ 자동 구매 완료</b>\n"
+            f"✅ <b>로또 6/45 자동 구매 완료</b>\n"
             f"📅 {now}\n"
             f"🎫 구매 수량: {len(tickets)}장\n"
             f"🔢 번호:\n{ticket_lines}\n"
@@ -139,7 +136,7 @@ class LotteryBuyer:
     def _notify_failure(self, error: str):
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         msg = (
-            f"❌ <b>연금복권 자동 구매 실패</b>\n"
+            f"❌ <b>로또 6/45 자동 구매 실패</b>\n"
             f"📅 {now}\n"
             f"🚨 오류: {error}"
         )
